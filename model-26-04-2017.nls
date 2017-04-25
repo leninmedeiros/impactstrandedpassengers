@@ -1,0 +1,506 @@
+; IMPACT - Stranded Passengers Model
+; CODE By Lenin Medeiros & Natalie van der Wal
+; Vrije Universiteit Amsterdam
+; April, 2017
+to update-frustration-emotion-contagion
+  let total_frustration 0
+  ask passengers [
+    set total_frustration (total_frustration + frustration_level)
+  ]
+  if boarding_time = "Unknown." or total_frustration != 0 [
+    ask passengers [
+      let oflt frustration_level
+      let ff 0
+      let ag age_group 
+      let c? commuter? 
+      let g gender 
+      let n nationality_cluster
+      let gr group
+      let compatibility 0
+      let count_in_radius 0
+      if count passengers in-radius 10 > 1 [
+        ask passengers in-radius 10 [
+          set compatibility 0
+          if self != myself [
+            ifelse gr = group
+            [
+              set compatibility 1
+            ]
+            [
+              if ag = age_group [
+                set compatibility (compatibility + 0.25)
+              ]
+              if c? = commuter? [
+                set compatibility (compatibility + 0.25)
+              ]
+              if g = gender [
+                set compatibility (compatibility + 0.25)
+              ]
+              if n = nationality_cluster [
+                set compatibility (compatibility + 0.25)
+              ]
+            ]
+            let dif (frustration_level - old_frustration_level)
+            set ff (ff + (dif * compatibility * 1.5))
+            set count_in_radius count_in_radius + 1
+          ]
+        ]
+      ]
+      ifelse count_in_radius > 0
+      [
+        set ff (ff / count_in_radius)
+      ]
+      [
+        set ff 0
+      ]
+      ifelse (frustration_level + ff) > 1
+      [
+        set frustration_level 1
+      ]
+      [
+        ifelse frustration_level + ff < 0
+        [
+          set frustration_level 0
+        ]
+        [
+          set frustration_level frustration_level + ff
+        ]
+      ]
+      if ff < 0 [
+        set frustration_level (frustration_level - 0.002)
+      ]
+      if frustration_level > 1 [
+        set frustration_level 1
+      ]
+      if frustration_level < 0 [
+        set frustration_level 0
+      ]
+      if oflt != frustration_level [
+        set old_frustration_level oflt
+      ]
+    ]
+  ]
+end
+
+
+to update-frustration  
+  ask passengers [
+    ifelse boarding_time = "Unknown."
+    [
+      ifelse in_a_hurry? and (frustration_level + 0.0004) <= 1 
+      [
+        set frustration_level (frustration_level + 0.0004)
+      ]
+      [
+        ifelse commuter? and (frustration_level + 0.000030) <= 1 
+        [
+          set frustration_level (frustration_level + 0.000030)
+        ]
+        [
+          if age_group = "young" and (frustration_level + 0.000030) <= 1 [
+            set frustration_level (frustration_level + 0.000030)
+          ]
+          if parent? and (frustration_level + 0.000030) <= 1 [
+            set frustration_level (frustration_level + 0.000030)
+          ]
+          if age_group = "adolescent" and (frustration_level + 0.00004) <= 1 [
+            set frustration_level (frustration_level + 0.00004)
+          ]
+          if age_group = "adult" and (frustration_level + 0.00002) <= 1 [
+            set frustration_level (frustration_level + 0.00002)
+          ]
+          if age_group = "elder" and (frustration_level + 0.00001) <= 1 [
+            set frustration_level (frustration_level + 0.00001)
+          ]
+        ]
+      ]
+    ]
+    [
+      let dif difference-boarding-times boarding_time initial_boarding_time
+      let factor -0.0002
+      if dif > 0 
+      [
+        set factor (0.00000025 * (sqrt dif))
+      ]
+      ifelse frustration_level + factor >= 1 
+      [
+        set frustration_level 1
+      ]
+      [
+        ifelse frustration_level + factor <= 0
+        [
+          set frustration_level 0
+        ]
+        [
+          set frustration_level (frustration_level + factor)
+        ]
+      ]
+    ]
+  ] 
+end
+
+to update-intention
+  ask passengers with [gender = "F" and age_group = "young"][if frustration_level <= (.5 + [internal_threshold] of self) [ set intention "to enjoy the trip"]]
+  ask passengers with [gender = "F" and age_group = "adolescent"][if frustration_level <= (.4 + [internal_threshold] of self)[ set intention "to enjoy the trip"]]
+  ask passengers with [gender = "F" and age_group = "adult"][if frustration_level <= (.45 + internal_threshold) [ set intention "to enjoy the trip"]]
+  ask passengers with [gender = "F" and age_group = "elder"][if frustration_level <= (.45 + internal_threshold) [ set intention "to enjoy the trip"]]
+
+  ask passengers with [gender = "M" and age_group = "young"][if frustration_level <= (.45 + internal_threshold)[ set intention "to enjoy the trip"]]
+  ask passengers with [gender = "M" and age_group = "adolescent"][if frustration_level <= (.35 + internal_threshold)[ set intention "to enjoy the trip"]]
+  ask passengers with [gender = "M" and age_group = "adult"][if frustration_level <= (.40 + internal_threshold)[ set intention "to enjoy the trip"]]
+  ask passengers with [gender = "M" and age_group = "elder"][if frustration_level <= (.45 + internal_threshold)[ set intention "to enjoy the trip"]]
+
+  ask passengers with [gender = "F" and age_group = "young"][if frustration_level > (.5 + [internal_threshold] of self) [ set intention "to seek for information"]]
+  ask passengers with [gender = "F" and age_group = "adolescent"][if frustration_level > (.4 + [internal_threshold] of self)[ set intention "to seek for information"]]
+  ask passengers with [gender = "F" and age_group = "adult"][if frustration_level > (.45 + internal_threshold) [ set intention "to seek for information"]]
+  ask passengers with [gender = "F" and age_group = "elder"][if frustration_level > (.45 + internal_threshold) [ set intention "to seek for information"]]
+
+  ask passengers with [gender = "M" and age_group = "young"][if frustration_level > (.45 + internal_threshold)[ set intention "to seek for information"]]
+  ask passengers with [gender = "M" and age_group = "adolescent"][if frustration_level > (.35 + internal_threshold)[ set intention "to seek for information"]]
+  ask passengers with [gender = "M" and age_group = "adult"][if frustration_level > (.40 + internal_threshold)[ set intention "to seek for information"]]
+  ask passengers with [gender = "M" and age_group = "elder"][if frustration_level > (.45 + internal_threshold)[ set intention "to seek for information"]]
+  
+  ask passengers with [frustration_level > 0.8] [set intention "to become aggressive"]
+end
+
+to action_selection
+  let chance 0
+  ask passengers with [intention = "to become aggressive" and gender = "F" and age_group = "young"] [
+    set chance random 100
+    ifelse chance = 0 ; 1%
+    [
+      set action "to use force"
+      set number_of_misbehaviours (number_of_misbehaviours + 1)
+      set times_using_force (times_using_force + 1)
+    ]
+    [
+      ifelse chance = 1 or chance = 2 ; 2%
+      [
+        set action "to intimidate"
+        set number_of_misbehaviours (number_of_misbehaviours + 1)
+        set times_intimidating (times_intimidating + 1)
+      ]
+      [
+        if chance >= 3 and chance <= 7 [ ; 5%
+          set action "to yell"
+          set number_of_misbehaviours (number_of_misbehaviours + 1)
+          set times_yelling (times_yelling + 1)
+        ]
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to become aggressive" and gender = "M" and age_group = "young"] [
+    set chance random 100
+    ifelse chance = 0 or chance = 1 ; 2%
+    [
+      set action "to use force"
+      set number_of_misbehaviours (number_of_misbehaviours + 1)
+      set times_using_force (times_using_force + 1)
+    ]
+    [
+      ifelse chance >= 2 and chance <= 7 ; 6%
+      [
+        set action "to intimidate"
+        set number_of_misbehaviours (number_of_misbehaviours + 1)
+        set times_intimidating (times_intimidating + 1)
+      ]
+      [
+        if chance >= 8 and chance <= 24 [ ; 17%
+          set action "to yell"
+          set number_of_misbehaviours (number_of_misbehaviours + 1)
+          set times_yelling (times_yelling + 1)
+        ]
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to become aggressive" and gender = "F" and (age_group = "adult" or age_group = "adolescent")] [
+    set chance random 100
+    ifelse chance = 0 ; 1%
+    [
+      set action "to use force"
+      set number_of_misbehaviours (number_of_misbehaviours + 1)
+      set times_using_force (times_using_force + 1)
+    ]
+    [
+      ifelse chance >= 1 or chance <= 4 ; 4%
+      [
+        set action "to intimidate"
+        set number_of_misbehaviours (number_of_misbehaviours + 1)
+        set times_intimidating (times_intimidating + 1)
+      ]
+      [
+        if chance >= 4 and chance <= 12 [ ; 9%
+          set action "to yell"
+          set number_of_misbehaviours (number_of_misbehaviours + 1)
+          set times_yelling (times_yelling + 1)
+        ]
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to become aggressive" and gender = "M" and (age_group = "adult" or age_group = "adolescent")] [
+    set chance random 100
+    ifelse chance >= 1 or chance <= 4 ; 4%
+    [
+      set action "to use force"
+      set number_of_misbehaviours (number_of_misbehaviours + 1)
+      set times_using_force (times_using_force + 1)
+    ]
+    [
+      ifelse chance >= 5 or chance <= 15 ; 11%
+      [
+        set action "to intimidate"
+        set number_of_misbehaviours (number_of_misbehaviours + 1)
+        set times_intimidating (times_intimidating + 1)
+      ]
+      [
+        if chance >= 16 and chance <= 45 [ ; 30%
+          set action "to yell"
+          set number_of_misbehaviours (number_of_misbehaviours + 1)
+          set times_yelling (times_yelling + 1)
+        ]
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to become aggressive" and gender = "F" and age_group = "elder"] [
+    set chance random 100
+    ifelse chance = 0 ; 1%
+    [
+      set action "to use force"
+      set number_of_misbehaviours (number_of_misbehaviours + 1)
+      set times_using_force (times_using_force + 1)
+    ]
+    [
+      ifelse chance = 1 or chance = 2 ; 2%
+      [
+        set action "to intimidate"
+        set number_of_misbehaviours (number_of_misbehaviours + 1)
+        set times_intimidating (times_intimidating + 1)
+      ]
+      [
+        if chance >= 3 and chance <= 7 [ ; 5%
+          set action "to yell"
+          set number_of_misbehaviours (number_of_misbehaviours + 1)
+          set times_yelling (times_yelling + 1)
+        ]
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to become aggressive" and gender = "M" and age_group = "elder"] [
+    set chance random 100
+    ifelse chance = 0 or chance = 1 ; 2%
+    [
+      set action "to use force"
+      set number_of_misbehaviours (number_of_misbehaviours + 1)
+      set times_using_force (times_using_force + 1)
+    ]
+    [
+      ifelse chance >= 2 and chance <= 7 ; 6%
+      [
+        set action "to intimidate"
+        set number_of_misbehaviours (number_of_misbehaviours + 1)
+        set times_intimidating (times_intimidating + 1)
+      ]
+      [
+        if chance >= 8 and chance <= 24 [ ; 17%
+          set action "to yell"
+          set number_of_misbehaviours (number_of_misbehaviours + 1)
+          set times_yelling (times_yelling + 1)
+        ]
+      ]
+    ]
+  ]
+
+  let clusters ["arab" "near east" "latin america" "east europe" "latin europe" "nordic" "germanic" "african" "anglo" "confucian" "far east"]
+  let chance_answer 0
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "arab"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      if chance < 42
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+    [
+      if chance < 14
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "near east"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      if chance < 63
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+    [
+      if chance < 21
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "latin america"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      if chance < 21
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+    [
+      if chance < 7
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "east europe"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      if chance < 48
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+    [
+      if chance < 16
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "latin europe"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      set frustration_level (frustration_level - 0.0005)
+    ]
+    [
+      if chance < 36
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "nordic"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      set frustration_level (frustration_level - 0.0005)
+    ]
+    [
+      if chance < 86
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "germanic"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+     set frustration_level (frustration_level - 0.0005) 
+    ]
+    [
+      if chance < 69
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "african"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      set frustration_level (frustration_level - 0.0005)
+    ]
+    [
+      if chance < 48
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "anglo"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      set frustration_level (frustration_level - 0.0005)
+    ]
+    [
+      if chance < 95
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "confucian"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      if chance < 3
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+    [
+      if chance < 1
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+  ask passengers with [intention = "to seek for information" and nationality_cluster = "far east"] [
+    set action "to ask questions"
+    set chance_answer random 100
+    ifelse multi_language_staff
+    [
+      if chance < 54
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+    [
+      if chance < 18
+      [
+        set frustration_level (frustration_level - 0.0005)
+      ]
+    ]
+  ]
+end
+
+to chat-bot
+  let chance 0
+  ask passengers with [age_group != "elder" and frustration_level != 0]
+  [
+    set chance random 100
+    ifelse chance < 20
+    [
+      if frustration_level + 0.0002 <= 1 [
+        set frustration_level (frustration_level + 0.0002)
+      ]
+    ]
+    [
+      if frustration_level - 0.0002 >= 0 [
+        set frustration_level (frustration_level - 0.0002)
+      ]
+    ]
+  ]
+end 
